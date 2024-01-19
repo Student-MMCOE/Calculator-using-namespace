@@ -1,0 +1,162 @@
+#include <iostream>
+    #include <vector>
+    #include <algorithm>
+    #include <ctime>
+    
+    class Book {
+    public:
+        std::string title;
+        std::string author;
+        std::string ISBN;
+        bool available;
+    
+        Book(const std::string& title, const std::string& author, const std::string& ISBN)
+            : title(title), author(author), ISBN(ISBN), available(true) {}
+    };
+    
+    class Borrower {
+    public:
+        std::string name;
+        int booksCheckedOut;
+        time_t lastCheckedOutTime;
+    
+        Borrower(const std::string& name) : name(name), booksCheckedOut(0) {}
+    };
+    
+    class Library {
+    private:
+        std::vector<Book> books;
+        std::vector<Borrower> borrowers;
+    
+    public:
+        // Book Database
+        void addBook(const Book& book) {
+            books.push_back(book);
+        }
+    
+        // Book Search
+        void searchBooks(const std::string& query) {
+            std::cout << "Search Results:\n";
+            for (const Book& book : books) {
+                if (book.title.find(query) != std::string::npos ||
+                    book.author.find(query) != std::string::npos ||
+                    book.ISBN.find(query) != std::string::npos) {
+                    std::cout << "Title: " << book.title << "\tAuthor: " << book.author << "\tISBN: " << book.ISBN << "\tAvailable: " << (book.available ? "Yes" : "No") << std::endl;
+                }
+            }
+        }
+    
+        // Book Checkout
+        void checkoutBook(const std::string& ISBN, const std::string& borrowerName) {
+            auto it = std::find_if(books.begin(), books.end(), [&](const Book& b) { return b.ISBN == ISBN && b.available; });
+            if (it != books.end()) {
+                it->available = false;
+                Borrower& borrower = getOrCreateBorrower(borrowerName);
+                borrower.booksCheckedOut++;
+                borrower.lastCheckedOutTime = std::time(nullptr);
+                std::cout << "Book checked out successfully.\n";
+            } else {
+                std::cout << "Book not available for checkout.\n";
+            }
+        }
+    
+        // Book Return
+        void returnBook(const std::string& ISBN) {
+            auto it = std::find_if(books.begin(), books.end(), [&](const Book& b) { return b.ISBN == ISBN && !b.available; });
+            if (it != books.end()) {
+                it->available = true;
+                std::cout << "Book returned successfully.\n";
+            } else {
+                std::cout << "Invalid book return.\n";
+            }
+        }
+    
+        // Fine Calculation (Assuming a simple daily fine)
+        double calculateFine(const Borrower& borrower) {
+            const int fineRate = 1; // Change this according to your fine policy
+            time_t currentTime = std::time(nullptr);
+            double fine = 0.0;
+    
+            if (borrower.booksCheckedOut > 0) {
+                double overdueDays = difftime(currentTime, borrower.lastCheckedOutTime) / (24 * 60 * 60); // Convert seconds to days
+                fine = fineRate * overdueDays;
+            }
+    
+            return fine;
+        }
+    
+        // User Interface
+        void displayMenu() {
+            int choice;
+            std::string query, borrowerName, ISBN;
+    
+            do {
+                std::cout << "\nLibrary Management System\n";
+                std::cout << "1. Search Books\n";
+                std::cout << "2. Checkout Book\n";
+                std::cout << "3. Return Book\n";
+                std::cout << "4. Calculate Fine\n";
+                std::cout << "0. Exit\n";
+                std::cout << "Enter your choice: ";
+                std::cin >> choice;
+    
+                switch (choice) {
+                    case 1:
+                        std::cout << "Enter search query: ";
+                        std::cin.ignore();
+                        std::getline(std::cin, query);
+                        searchBooks(query);
+                        break;
+                    case 2:
+                        std::cout << "Enter ISBN of the book to checkout: ";
+                        std::cin >> ISBN;
+                        std::cout << "Enter borrower's name: ";
+                        std::cin.ignore();
+                        std::getline(std::cin, borrowerName);
+                        checkoutBook(ISBN, borrowerName);
+                        break;
+                    case 3:
+                        std::cout << "Enter ISBN of the book to return: ";
+                        std::cin >> ISBN;
+                        returnBook(ISBN);
+                        break;
+                    case 4:
+                        std::cout << "Enter borrower's name: ";
+                        std::cin.ignore();
+                        std::getline(std::cin, borrowerName);
+                        std::cout << "Fine: $" << calculateFine(getOrCreateBorrower(borrowerName)) << std::endl;
+                        break;
+                    case 0:
+                        std::cout << "Exiting...\n";
+                        break;
+                    default:
+                        std::cout << "Invalid choice. Try again.\n";
+                }
+            } while (choice != 0);
+        }
+    
+    private:
+        Borrower& getOrCreateBorrower(const std::string& borrowerName) {
+            auto it = std::find_if(borrowers.begin(), borrowers.end(), [&](const Borrower& b) { return b.name == borrowerName; });
+            if (it != borrowers.end()) {
+                return *it;
+            } else {
+                borrowers.push_back(Borrower(borrowerName));
+                return borrowers.back();
+            }
+        }
+    };
+    
+    int main() {
+        Library library;
+    
+        // Add some sample books
+        library.addBook(Book("The Catcher in the Rye", "J.D. Salinger", "978-0-316-76948-0"));
+        library.addBook(Book("To Kill a Mockingbird", "Harper Lee", "978-0-06-112008-4"));
+        library.addBook(Book("1984", "George Orwell", "978-0-452-28423-4"));
+    
+        // Display menu for interactions
+        library.displayMenu();
+    
+        return 0;
+    }
